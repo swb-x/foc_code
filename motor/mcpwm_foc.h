@@ -12,8 +12,9 @@
 		TIM1->CR1 &= ~TIM_CR1_UDIS;
 
 void Motor_PWM_Test50(void);
+void Motor_PWM_Start(void);
 void Motor_PWM_Stop(void);
-static void stop_pwm_hw(void);
-static void start_pwm_hw(void);
+void mcpwm_foc_dc_cal(void);
+
 
 #endif

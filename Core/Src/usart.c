@@ -99,7 +99,10 @@ void MX_USART1_UART_Init(void)
 /* USER CODE BEGIN 1 */
 int fputc(int ch, FILE *f)
 {
-  HAL_UART_Transmit(&huart1, (uint8_t *)&ch, 1, 0xffff);
+  while (LL_USART_IsActiveFlag_TXE(USART1) == 0U)
+  {
+  }
+  LL_USART_TransmitData8(USART1, (uint8_t)ch);
   return ch;
 }
 /* USER CODE END 1 */

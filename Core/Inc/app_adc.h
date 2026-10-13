@@ -5,6 +5,7 @@
 #include "adc.h"
 
 void StartTempDetectTask(void *argument);
+void App_ADC2_ConvCplt(void);
 
 
 #endif

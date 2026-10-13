@@ -1,6 +1,8 @@
 #ifndef __DATETYPES_H__
 #define __DATETYPES_H__
 
+#include <stdbool.h>
+
 typedef enum {
 	FAULT_CODE_NONE = 0,
 	FAULT_CODE_OVER_VOLTAGE,

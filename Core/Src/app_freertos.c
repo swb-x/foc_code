@@ -25,6 +25,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "stm32g4xx_ll_gpio.h"
 void StartCtrlLedTask(void *argument);
 /* USER CODE END Includes */
 
@@ -145,7 +146,7 @@ void StartCtrlLedTask(void *argument)
   Motor_PWM_Test50();
   for(;;)
   {
-    HAL_GPIO_TogglePin(LED_CTRL_GPIO_Port, LED_CTRL_Pin);
+    LL_GPIO_TogglePin(LED_CTRL_GPIO_Port, LED_CTRL_Pin);
     osDelay(500);
   }
 }
