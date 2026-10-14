@@ -5,8 +5,13 @@
 
 static volatile motor_all_state_t m_motor;
 
+/* 故障状态：nFAULT 拉低后置位，必须显式调用 Motor_ClearFault() 或重新 Motor_PWM_Start() 才恢复输出 */
+static volatile bool m_fault_latched = false;
+volatile uint32_t g_drv_fault_count = 0;
+
 static void stop_pwm_hw(void);
 static void start_pwm_hw(void);
+static void force_all_gate_low_hw(void);
 
 /* 50% 占空比输出测试：三相同相位、同占空比 */
 void Motor_PWM_Test50(void)
@@ -21,8 +26,8 @@ void Motor_PWM_Test50(void)
     LL_TIM_EnableCounter(TIM1);
 
     /* 4. 使能 DRV8353，等电荷泵/DVDD 就绪 */
-    // LL_GPIO_SetOutputPin(ENABLE_GPIO_Port, ENABLE_Pin);
-    // osDelay(2);
+    LL_GPIO_SetOutputPin(ENABLE_GPIO_Port, ENABLE_Pin);
+    osDelay(2);
 
     /* 5. 最后开 MOE，六路 PWM 同时上线 */
     LL_TIM_EnableAllOutputs(TIM1);
@@ -33,6 +38,9 @@ void Motor_PWM_Test50(void)
 /* PWM输出 */
 void Motor_PWM_Start(void)
 {
+    /* 启动前清掉上一次的故障锁存，否则 nFAULT 恢复后也不会自己重启 */
+    Motor_ClearFault();
+
     TIMER_UPDATE_DUTY_MT(2125, 2125, 2125);
     start_pwm_hw();
     LL_TIM_EnableCounter(TIM1);
@@ -47,6 +55,40 @@ void Motor_PWM_Stop(void)
     stop_pwm_hw();
     LL_GPIO_ResetOutputPin(ENABLE_GPIO_Port, ENABLE_Pin);
     LL_TIM_DisableCounter(TIM1);
+}
+
+/*==========================================================================
+ * nFAULT 紧急关断
+ * 由 EXTI9_5_IRQHandler（PA5 下降沿）直接调用，必须保持 ISR 安全：
+ * 不调用任何 RTOS API、不做阻塞、不打印。
+ *==========================================================================*/
+void Motor_PWM_FaultStop(void)
+{
+    /* 1. 六路 OC 全部强制无效电平：CCxE 与 CCxNE 都要使能，
+     *    这样六个栅极是被"主动拉低"而不是变成高阻浮空（极性为高有效时无效电平=低）。
+     *    MOE 此时仍为 1，这一步立刻把上管下管全部关断。 */
+    stop_pwm_hw();
+
+    /* 2. 拉低 EN_GATE：DRV8323 进入休眠，内部电荷泵停摆，栅极驱动彻底关闭。
+     *    这是唯一能保证 GHx/GLx 全灭的一步。 */
+    LL_GPIO_ResetOutputPin(ENABLE_GPIO_Port, ENABLE_Pin);
+
+    /* 3. 清 MOE 并停计数器，防止 EN_GATE 被意外拉高后又瞬间输出 */
+    LL_TIM_DisableAllOutputs(TIM1);
+    LL_TIM_DisableCounter(TIM1);
+
+    g_drv_fault_count++;
+    m_fault_latched = true;
+}
+
+bool Motor_IsFaultLatched(void)
+{
+    return m_fault_latched;
+}
+
+void Motor_ClearFault(void)
+{
+    m_fault_latched = false;
 }
 
 void mcpwm_foc_dc_cal(void)
@@ -135,6 +177,7 @@ static void stop_pwm_hw(void){
     // COM事件同步刷新三路OC配置，等价 TIM1->EGR |= TIM_EGR_COMG;
     LL_TIM_GenerateEvent_COM(TIM1);
 }
+
 
 static void start_pwm_hw(void){
    //======== TIM1 CH1 =========

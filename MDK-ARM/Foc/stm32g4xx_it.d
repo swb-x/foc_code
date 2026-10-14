@@ -40,4 +40,5 @@ foc/stm32g4xx_it.o: ..\Core\Src\stm32g4xx_it.c ..\Core\Inc\main.h \
   ..\Drivers\STM32G4xx_HAL_Driver\Inc\stm32g4xx_ll_gpio.h \
   ..\Core\Inc\app_adc.h ..\Core\Inc\adc.h \
   ..\Middlewares\Third_Party\FreeRTOS\Source\CMSIS_RTOS_V2\cmsis_os2.h \
-  ..\Core\Inc\datetypes.h ..\Core\Inc\stm32g4xx_it.h
+  ..\Core\Inc\datetypes.h ..\Core\Inc\stm32g4xx_it.h \
+  ..\motor\mcpwm_foc.h ..\Core\Inc\tim.h

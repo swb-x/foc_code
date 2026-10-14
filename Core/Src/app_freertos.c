@@ -62,6 +62,7 @@ osThreadId_t LedCtrlTaskHandle;
 const osThreadAttr_t LedCtrlTask_attributes = {
   .name = "LedCtrlTask",
   .priority = (osPriority_t) osPriorityNormal,
+  /* 任务里有 printf（含 %f），newlib 的浮点格式化栈消�? >1KB�?512B 必栈溢出 */
   .stack_size = 128 * 4
 };
 osThreadId_t TempDetectTaskHandle;

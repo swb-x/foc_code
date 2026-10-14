@@ -16,5 +16,10 @@ void Motor_PWM_Start(void);
 void Motor_PWM_Stop(void);
 void mcpwm_foc_dc_cal(void);
 
+/* nFAULT 触发时的紧急关断：中断上下文可直接调用（内部不使用任何 RTOS/阻塞接口） */
+void Motor_PWM_FaultStop(void);
+bool Motor_IsFaultLatched(void);
+void Motor_ClearFault(void);
+extern volatile uint32_t g_drv_fault_count;
 
 #endif
