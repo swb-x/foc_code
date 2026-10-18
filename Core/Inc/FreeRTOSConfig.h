@@ -165,6 +165,13 @@ standard names. */
 
 /* USER CODE BEGIN Defines */
 /* Section where parameter definitions can be added (for instance, to override default ones in FreeRTOS.h) */
+/* Heap size guard: CubeMX regeneration resets configTOTAL_HEAP_SIZE to 3072,
+   but this project needs ~4.1KB (three task stacks 512+1024+1024 plus Idle 512
+   and Timer 1024). With 3072, LedCtrlTask / TempDetectTask fail to create, which
+   shows up as no PWM, no LED blink and a silent UART. Forced here so the value
+   survives CubeMX regeneration. */
+#undef configTOTAL_HEAP_SIZE
+#define configTOTAL_HEAP_SIZE                    ((size_t)10240)
 /* USER CODE END Defines */
 
 #endif /* FREERTOS_CONFIG_H */

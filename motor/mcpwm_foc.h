@@ -7,8 +7,8 @@
 #define TIMER_UPDATE_DUTY_MT(duty1, duty2, duty3) \
 		TIM1->CR1 |= TIM_CR1_UDIS; \
 		TIM1->CCR1 = duty1; \
-		TIM1->CCR2 = duty3; \
-		TIM1->CCR3 = duty2; \
+		TIM1->CCR2 = duty2; \
+		TIM1->CCR3 = duty3; \
 		TIM1->CR1 &= ~TIM_CR1_UDIS;
 
 void Motor_PWM_Test50(void);

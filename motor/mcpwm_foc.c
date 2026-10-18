@@ -11,7 +11,6 @@ volatile uint32_t g_drv_fault_count = 0;
 
 static void stop_pwm_hw(void);
 static void start_pwm_hw(void);
-static void force_all_gate_low_hw(void);
 
 /* 50% 占空比输出测试：三相同相位、同占空比 */
 void Motor_PWM_Test50(void)

@@ -26,6 +26,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "stm32g4xx_ll_gpio.h"
+#include "mcpwm_foc.h"
 void StartCtrlLedTask(void *argument);
 /* USER CODE END Includes */
 
@@ -62,14 +63,14 @@ osThreadId_t LedCtrlTaskHandle;
 const osThreadAttr_t LedCtrlTask_attributes = {
   .name = "LedCtrlTask",
   .priority = (osPriority_t) osPriorityNormal,
-  /* 任务里有 printf（含 %f），newlib 的浮点格式化栈消�? >1KB�?512B 必栈溢出 */
-  .stack_size = 128 * 4
+  /* printf + RTOS mutex call inside fputc needs >512B stack */
+  .stack_size = 256 * 4
 };
 osThreadId_t TempDetectTaskHandle;
 const osThreadAttr_t TempDetectTask_attributes = {
   .name = "TempDetectTask",
   .priority = (osPriority_t) osPriorityNormal,
-  .stack_size = 128 * 4
+  .stack_size = 256 * 4
 };
 /* USER CODE END FunctionPrototypes */
 
@@ -84,7 +85,11 @@ void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
   */
 void MX_FREERTOS_Init(void) {
   /* USER CODE BEGIN Init */
-
+  /* Print mutex used by fputc (see usart.c). Must be created after osKernelInitialize. */
+  {
+    extern osMutexId_t uart_print_mutex;
+    uart_print_mutex = osMutexNew(NULL);
+  }
   /* USER CODE END Init */
 
   /* USER CODE BEGIN RTOS_MUTEX */
@@ -139,14 +144,23 @@ void StartDefaultTask(void *argument)
 
 /* Private application code --------------------------------------------------*/
 /* USER CODE BEGIN Application */
-void Motor_PWM_Test50(void);
 void StartCtrlLedTask(void *argument)
 {
+  uint32_t last_fault = 0;
+
   printf("LedCtrlTask started\n");
 
   Motor_PWM_Test50();
+
   for(;;)
   {
+    /* nFAULT tripped: output stays off until Motor_PWM_Start(); print so it is visible */
+    if (g_drv_fault_count != last_fault)
+    {
+      last_fault = g_drv_fault_count;
+      printf("DRV8323 FAULT: nFAULT low, all PWM disabled (cnt=%d)\r\n", last_fault);
+    }
+
     LL_GPIO_TogglePin(LED_CTRL_GPIO_Port, LED_CTRL_Pin);
     osDelay(500);
   }

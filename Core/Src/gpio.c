@@ -103,5 +103,14 @@ void MX_GPIO_Init(void)
   NVIC_SetPriority(EXTI9_5_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),5, 0));
   NVIC_EnableIRQ(EXTI9_5_IRQn);
 
+  /* USER CODE BEGIN MX_GPIO_Init_2 */
+  /* nFAULT (PA5) is an open-drain output of the DRV8323 and needs a pull-up.
+     CubeMX generates PULL_NO above; left floating, the pin randomly produces
+     falling edges into EXTI5 and Motor_PWM_FaultStop() then kills all six PWM
+     outputs permanently. Harmless if an external pull-up is already fitted. */
+  LL_GPIO_SetPinPull(nFault_GPIO_Port, nFault_Pin, LL_GPIO_PULL_UP);
+  /* USER CODE END MX_GPIO_Init_2 */
 }
 
+/* USER CODE BEGIN 2 */
+/* USER CODE END 2 */

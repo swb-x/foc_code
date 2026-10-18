@@ -87,7 +87,7 @@ void StartTempDetectTask(void *argument)
             /* 分压公式反推 NTC 阻值：V = 3V3A × 3.3K/(Rntc+3.3K) */
             float rntc  = 3300.0f * (4095.0f / (float)temp_raw - 1.0f);
             /* R0 和 B 值以实际 NTC 规格书为准 */
-            float tempC = 1.0f / (logf(rntc / 50000.0f) / 3950.0f + 1.0f / 298.15f) - 273.15f;
+            float tempC = 1.0f / (logf(rntc / 10000.0f) / 3950.0f + 1.0f / 298.15f) - 273.15f;
             printf("raw=%u  V=%.3fV  Rntc=%.0f  T=%.2fC\r\n", temp_raw, vtemp, rntc, tempC);
         }
         else if (!temp_done)

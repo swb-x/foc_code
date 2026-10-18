@@ -75,11 +75,15 @@ void MX_TIM1_Init(void)
   LL_TIM_SetTriggerOutput(TIM1, LL_TIM_TRGO_OC4REF);
   LL_TIM_SetTriggerOutput2(TIM1, LL_TIM_TRGO2_RESET);
   LL_TIM_DisableMasterSlaveMode(TIM1);
-  LL_TIM_EnableDeadTimePreload(TIM1);
+  /* Disable dead-time preload: with preload on, DTG only takes effect at the
+     first update event, so real dead time is 0 until then (shoot-through at
+     startup). Disabled -> DTG applies immediately. */
+  LL_TIM_DisableDeadTimePreload(TIM1);
   TIM_BDTRInitStruct.OSSRState = LL_TIM_OSSR_DISABLE;
   TIM_BDTRInitStruct.OSSIState = LL_TIM_OSSI_DISABLE;
   TIM_BDTRInitStruct.LockLevel = LL_TIM_LOCKLEVEL_1;
-  TIM_BDTRInitStruct.DeadTime = 10;
+  /* 70 x 5.88ns (TIM1 @170MHz) ~= 412ns dead time */
+  TIM_BDTRInitStruct.DeadTime = 70;
   TIM_BDTRInitStruct.BreakState = LL_TIM_BREAK_DISABLE;
   TIM_BDTRInitStruct.BreakPolarity = LL_TIM_BREAK_POLARITY_HIGH;
   TIM_BDTRInitStruct.BreakFilter = LL_TIM_BREAK_FILTER_FDIV1;

@@ -21,7 +21,13 @@
 #include "usart.h"
 
 /* USER CODE BEGIN 0 */
+#include "cmsis_os.h"
 
+/* Print mutex: fputc sends one char at a time, so concurrent printf from several
+   tasks interleaves characters. Created in MX_FREERTOS_Init (USER CODE Init);
+   fputc holds the lock to serialize each printf.
+   Do NOT call printf from an ISR (mutex is not ISR-safe). */
+osMutexId_t uart_print_mutex = NULL;
 /* USER CODE END 0 */
 
 /* USART1 init function */
@@ -99,10 +105,24 @@ void MX_USART1_UART_Init(void)
 /* USER CODE BEGIN 1 */
 int fputc(int ch, FILE *f)
 {
-  while (LL_USART_IsActiveFlag_TXE(USART1) == 0U)
+  /* Scheduler running and lock created: serialize the whole printf so task
+     outputs do not interleave. Before scheduler start, send directly. */
+  if ((uart_print_mutex != NULL) && (osKernelGetState() == osKernelRunning))
   {
+    osMutexAcquire(uart_print_mutex, osWaitForever);
+    while (LL_USART_IsActiveFlag_TXE(USART1) == 0U)
+    {
+    }
+    LL_USART_TransmitData8(USART1, (uint8_t)ch);
+    osMutexRelease(uart_print_mutex);
   }
-  LL_USART_TransmitData8(USART1, (uint8_t)ch);
+  else
+  {
+    while (LL_USART_IsActiveFlag_TXE(USART1) == 0U)
+    {
+    }
+    LL_USART_TransmitData8(USART1, (uint8_t)ch);
+  }
   return ch;
 }
 /* USER CODE END 1 */
