@@ -176,6 +176,14 @@ void DMA1_Channel1_IRQHandler(void)
   if (LL_DMA_IsActiveFlag_TC1(DMA1) != 0U)
   {
     LL_DMA_ClearFlag_TC1(DMA1);
+
+    /* 一帧 [U,V,W,Vbus] 已就绪 —— 20kHz 电流环在这里跑
+       （不调用任何 RTOS API，保持 ISR 安全） */
+    FOC_ControlLoop();
+  }
+  if (LL_DMA_IsActiveFlag_TE1(DMA1) != 0U)
+  {
+    LL_DMA_ClearFlag_TE1(DMA1);
   }
   /* USER CODE END DMA1_Channel1_IRQn 0 */
   /* USER CODE BEGIN DMA1_Channel1_IRQn 1 */

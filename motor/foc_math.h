@@ -3,159 +3,64 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <math.h>
 
-// Types
+/*==========================================================================
+ * 常量与宏（从 VESC 精简）
+ *==========================================================================*/
+#define FOC_PI              3.14159265358979f
+#define FOC_2PI             6.28318530717959f
+#define ONE_BY_SQRT3        0.57735026919f
+#define TWO_BY_SQRT3        1.15470053838f
+#define SQRT3_BY_2          0.86602540378f
+
+#define SQ(x)               ((x) * (x))
+#define NORM2_f(x, y)       (sqrtf(SQ(x) + SQ(y)))
+
+/* NaN 保护：变量为 NaN 时清零（VESC 防御性写法，观测器必需） */
+#define UTILS_NAN_ZERO(x)   do { if (isnan(x)) { (x) = 0.0f; } } while (0)
+
+/*==========================================================================
+ * 观测器状态（VESC MxLemming 观测器）
+ *==========================================================================*/
 typedef struct {
-	float va;
-	float vb;
-	float vc;
-	float v_mag_filter;
-	float mod_alpha_filter;
-	float mod_beta_filter;
-	float mod_alpha_measured;
-	float mod_beta_measured;
-	float mod_alpha_raw;
-	float mod_beta_raw;
-	float id_target;
-	bool id_override_hfi;
-	float iq_target;
-	float max_duty;
-	float duty_now;
-	float phase;
-	float phase_cos;
-	float phase_sin;
-	float i_alpha;
-	float i_beta;
-	float i_abs;
-	float i_abs_filter;
-	float i_bus;
-	float v_bus;
-	float v_alpha;
-	float v_beta;
-	float mod_d;
-	float mod_q;
-	float mod_q_filter;
-	float id;
-	float iq;
-	float id_filter;
-	float iq_filter;
-	float vd;
-	float vq;
-	float vd_int;
-	float vq_int;
-	uint32_t svm_sector;
-	bool is_using_phase_filters;
-} motor_state_t;
+    float x1;              /* alpha 轴磁链估计 */
+    float x2;              /* beta 轴磁链估计 */
+    float i_alpha_last;    /* 上一拍电流（微分项用） */
+    float i_beta_last;
+} observer_state_t;
 
-typedef struct {
-	motor_state_t m_motor_state;
-	float m_curr_unbalance;
-	float m_currents_adc[3];
-	bool m_phase_override;
-	float m_phase_now_override;
-	float m_duty_cycle_set;
-	float m_id_set;
-	float m_iq_set;
-	float m_i_fw_set;
-	float m_i_fw_override;
-	float m_current_off_delay;
-	float m_openloop_speed;
-	float m_openloop_phase;
-	// foc_pwm_mode m_pwm_mode;
-	float m_pos_pid_set;
-	float m_speed_pid_set_rpm;
-	float m_speed_command_rpm;
-	float m_phase_now_observer;
-	float m_phase_now_observer_override;
-	float m_observer_x1_override;
-	float m_observer_x2_override;
-	bool m_phase_observer_override;
-	float m_phase_now_encoder;
-	float m_phase_now_encoder_no_index;
-	// observer_state m_observer_state;
-	float m_pll_phase;
-	float m_pll_speed;
-	float m_speed_est_fast;
-	float m_speed_est_fast_corrected; // Same as m_speed_est_fast, but always based on the corrected position
-	float m_speed_est_faster;
-	// mc_sample_t m_samples;
-	int m_tachometer;
-	int m_tachometer_abs;
-	float m_pos_pid_now;
-	float m_gamma_now;
-	bool m_using_encoder;
-	int m_duty1_next, m_duty2_next, m_duty3_next;
-	bool m_duty_next_set;
-	float m_i_alpha_sample_next;
-	float m_i_beta_sample_next;
-	float m_i_alpha_sample_with_offset;
-	float m_i_beta_sample_with_offset;
-	float m_i_alpha_beta_has_offset;
-	// hfi_state_t m_hfi;
-	int m_hfi_plot_en;
-	float m_hfi_plot_sample;
+/*==========================================================================
+ * 工具函数
+ *==========================================================================*/
+float foc_norm_angle(float angle);        /* 归一化到 [0, 2π) */
+float foc_norm_angle_pi(float angle);     /* 归一化到 (-π, π] */
+float foc_clamp(float v, float lo, float hi);
+void  foc_truncate_number_abs(float *v, float max_abs);
+void  foc_truncate_number_int(int32_t *v, int32_t lo, int32_t hi);
 
-	// Audio Modulation
-	// mc_audio_state m_audio;
+/*==========================================================================
+ * 坐标变换
+ *==========================================================================*/
+void  foc_clarke(float iu, float iv, float *i_alpha, float *i_beta);
+void  foc_park(float i_alpha, float i_beta, float phase, float *id, float *iq);
+void  foc_inv_park(float vd, float vq, float phase, float *v_alpha, float *v_beta);
 
-	// For braking
-	float m_br_speed_before;
-	float m_br_vq_before;
-	int m_br_no_duty_samples;
+/*==========================================================================
+ * FOC 核心算法（移植自 VESC，去掉温度补偿/凸极/lambda 补偿等非必要分支）
+ *==========================================================================*/
 
-	float m_duty_abs_filtered;
-	float m_duty_filtered;
-	bool m_was_control_duty;
-	float m_duty_i_term;
-	bool duty_was_pi;
-	float duty_pi_duty_last;
-	float m_openloop_angle;
-	float m_x1_prev;
-	float m_x2_prev;
-	float m_phase_before_speed_est;
-	float m_phase_before_speed_est_corrected;
-	int m_tacho_step_last;
-	float m_pid_div_angle_last;
-	float m_pid_div_angle_accumulator;
-	float m_min_rpm_hyst_timer;
-	float m_min_rpm_timer;
-	bool m_cc_was_hfi;
-	float m_pos_i_term;
-	float m_pos_prev_error;
-	float m_pos_dt_int;
-	float m_pos_prev_proc;
-	float m_pos_dt_int_proc;
-	float m_pos_d_filter;
-	float m_pos_d_filter_proc;
-	float m_speed_i_term;
-	float m_speed_prev_error;
-	float m_speed_d_filter;
-	int m_ang_hall_int_prev;
-	bool m_using_hall;
-	float m_ang_hall;
-	float m_ang_hall_rate_limited;
-	float m_hall_dt_diff_last;
-	float m_hall_dt_diff_now;
-	bool m_motor_released;
+/* 磁链观测器：输入指令电压 vα/vβ 和实测电流 iα/iβ，输出电角度 phase([0,2π)) */
+void  foc_observer_update(float v_alpha, float v_beta, float i_alpha, float i_beta,
+                          float R, float L, float lambda, float dt,
+                          observer_state_t *state, float *phase);
 
-	// Resistance observer
-	float m_res_est;
-	float m_r_est_state;
+/* PLL：从观测器相位提取平滑转速（电气 rad/s） */
+void  foc_pll_run(float phase, float kp, float ki, float dt,
+                  float *pll_phase, float *pll_speed);
 
-	// Temperature-compensated parameters
-	float m_res_temp_comp;
-	float m_current_ki_temp_comp;
-
-	// Pre-calculated values
-	float p_lq;
-	float p_ld;
-	float p_inv_ld_lq; // (1.0/lq - 1.0/ld)
-	float p_v2_v3_inv_avg_half; // (0.5/ld + 0.5/lq)
-	float p_duty_norm;
-	float p_fs;
-	float p_dt;
-} motor_all_state_t;
-
-
+/* SVM：输入 vα/vβ（伏特）和母线电压，输出三路 CCR 值 */
+void  foc_svm(float v_alpha, float v_beta, float vbus, float duty_max,
+              uint32_t arr, uint32_t *du, uint32_t *dv, uint32_t *dw);
 
 #endif

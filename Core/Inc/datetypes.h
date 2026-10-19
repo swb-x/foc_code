@@ -43,12 +43,6 @@ typedef struct {
 	float p_pid_gain_dec_angle;
 	float p_pid_offset;
 
-	// Current controller
-	float cc_startup_boost_duty;
-	float cc_min_current;
-	float cc_gain;
-	float cc_ramp_step_max;
-
 	// Protect from flash corruption.
 	uint16_t crc;
 } mc_configuration;

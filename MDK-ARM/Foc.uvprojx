@@ -1077,6 +1077,11 @@
               <FileType>1</FileType>
               <FilePath>..\motor\foc_math.c</FilePath>
             </File>
+            <File>
+              <FileName>mc_config.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\motor\mc_config.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

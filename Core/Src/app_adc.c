@@ -50,13 +50,17 @@ void ADC1_Current_Start(uint16_t *buf, uint32_t len)
                            LL_ADC_DMA_GetRegAddr(ADC1, LL_ADC_DMA_REG_REGULAR_DATA),
                            (uint32_t)buf,
                            LL_DMA_DIRECTION_PERIPH_TO_MEMORY);
+    /* 使能传输完成中断：FOC_ControlLoop() 靠它每 50us 触发一次，
+       不开的话 NVIC 永远不进，电流环整个停摆 */
+    LL_DMA_ClearFlag_TC1(DMA1);
+    LL_DMA_EnableIT_TC(DMA1, LL_DMA_CHANNEL_1);
     LL_DMA_EnableChannel(DMA1, LL_DMA_CHANNEL_1);
     
 
     /* 4. 使能 ADC 的 DMA 请求（UNLIMITED 模式下一次即可） */
     LL_ADC_REG_SetDMATransfer(ADC1, LL_ADC_REG_DMA_TRANSFER_UNLIMITED);
 
-    /* 5. 启动：之后由 TIM1 的 OC4REF 每 50?s 自动触发一帧 */
+    /* 5. 启动：之后由 TIM1 的 OC4REF 每 50us 自动触发一帧 */
     LL_ADC_REG_StartConversion(ADC1);
 }
 

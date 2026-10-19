@@ -51,4 +51,5 @@ foc/app_freertos.o: ..\Core\Src\app_freertos.c \
   ..\Middlewares\Third_Party\FreeRTOS\Source\CMSIS_RTOS_V2\cmsis_os2.h \
   ..\Core\Inc\datetypes.h \
   ..\Middlewares\Third_Party\FreeRTOS\Source\CMSIS_RTOS_V2\cmsis_os.h \
-  ..\motor\mcpwm_foc.h ..\Core\Inc\tim.h
+  ..\motor\mcpwm_foc.h ..\Core\Inc\tim.h ..\motor\mc_config.h \
+  ..\motor\foc_math.h

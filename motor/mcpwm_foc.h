@@ -3,7 +3,9 @@
 
 #include "main.h"
 #include "tim.h"
+#include "mc_config.h"
 
+/* ÈıÂ·Õ¼¿Õ±ÈÍ¬²½Ğ´Èë£ºCCR1=U, CCR2=V, CCR3=W£¨Óë GHx¡úU/V/W ½ÓÏßÒ»ÖÂ£© */
 #define TIMER_UPDATE_DUTY_MT(duty1, duty2, duty3) \
 		TIM1->CR1 |= TIM_CR1_UDIS; \
 		TIM1->CCR1 = duty1; \
@@ -14,12 +16,25 @@
 void Motor_PWM_Test50(void);
 void Motor_PWM_Start(void);
 void Motor_PWM_Stop(void);
-void mcpwm_foc_dc_cal(void);
 
-/* nFAULT è§¦å‘æ—¶çš„ç´§æ€¥å…³æ–­ï¼šä¸­æ–­ä¸Šä¸‹æ–‡å¯ç›´æ¥è°ƒç”¨ï¼ˆå†…éƒ¨ä¸ä½¿ç”¨ä»»ä½• RTOS/é˜»å¡æ¥å£ï¼‰ */
+/* nFAULT ´¥·¢Ê±µÄ½ô¼±¹Ø¶Ï£ºÖĞ¶ÏÉÏÏÂÎÄ¿ÉÖ±½Óµ÷ÓÃ£¨ÄÚ²¿²»Ê¹ÓÃÈÎºÎ RTOS/×èÈû½Ó¿Ú£© */
 void Motor_PWM_FaultStop(void);
 bool Motor_IsFaultLatched(void);
 void Motor_ClearFault(void);
 extern volatile uint32_t g_drv_fault_count;
+
+/* ×îĞÂÒ»Ö¡ ADC1 Ô­Ê¼Öµ£º[0]=U(SOA) [1]=V(SOB) [2]=W(SOC) [3]=Vbus */
+extern volatile uint16_t g_adc_raw[4];
+
+/*--------------------------------------------------------------------------
+ * FOC Ö÷½Ó¿Ú
+ * µ÷ÓÃË³Ğò£ºFOC_Init() ¡ú MC_CalibrateOffsets() ¡ú FOC_StartOpenLoop() ¡ú FOC_SetSpeed()
+ *-------------------------------------------------------------------------*/
+void FOC_Init(void);            /* ²ÎÊı×°ÔØ + ADC1 Ğ£×¼ + DMA + ´¥·¢Æô¶¯£¨ÈÎÎñÉÏÏÂÎÄ£¬Ò»´Î£© */
+void FOC_ControlLoop(void);     /* 20kHz µçÁ÷»·£¬ÔÚ DMA1_Ch1 TC ÖĞ¶ÏÀïµ÷ÓÃ */
+void FOC_SpeedLoop(void);       /* 1kHz ËÙ¶È»·£¬ÔÚ 1ms ÈÎÎñÀïµ÷ÓÃ */
+void FOC_StartOpenLoop(float iq, float erpm);   /* ¿ª»·ÍÏ×ªÆô¶¯£¨µçÁ÷±Õ»· + ¿ª»·ÏàÎ»£© */
+void FOC_SetSpeed(float rpm);   /* ÇĞËÙ¶È±Õ»·²¢Éè¶¨»úĞµ×ªËÙ */
+void FOC_Stop(void);            /* »Ø IDLE ²¢¹Ø±ÕÊä³ö */
 
 #endif

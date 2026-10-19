@@ -27,7 +27,9 @@
 /* USER CODE BEGIN Includes */
 #include "stm32g4xx_ll_gpio.h"
 #include "mcpwm_foc.h"
+#include "app_adc.h"
 void StartCtrlLedTask(void *argument);
+void StartMotorTask(void *argument);
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -70,6 +72,12 @@ osThreadId_t TempDetectTaskHandle;
 const osThreadAttr_t TempDetectTask_attributes = {
   .name = "TempDetectTask",
   .priority = (osPriority_t) osPriorityNormal,
+  .stack_size = 256 * 4
+};
+osThreadId_t MotorTaskHandle;
+const osThreadAttr_t MotorTask_attributes = {
+  .name = "MotorTask",
+  .priority = (osPriority_t) osPriorityAboveNormal,
   .stack_size = 256 * 4
 };
 /* USER CODE END FunctionPrototypes */
@@ -120,6 +128,7 @@ void MX_FREERTOS_Init(void) {
   /* add events, ... */
   LedCtrlTaskHandle = osThreadNew(StartCtrlLedTask, NULL, &LedCtrlTask_attributes);
   TempDetectTaskHandle = osThreadNew(StartTempDetectTask, NULL, &TempDetectTask_attributes);
+  MotorTaskHandle = osThreadNew(StartMotorTask, NULL, &MotorTask_attributes);
   /* USER CODE END RTOS_EVENTS */
 
 }
@@ -150,19 +159,55 @@ void StartCtrlLedTask(void *argument)
 
   printf("LedCtrlTask started\n");
 
-  Motor_PWM_Test50();
-
   for(;;)
   {
     /* nFAULT tripped: output stays off until Motor_PWM_Start(); print so it is visible */
     if (g_drv_fault_count != last_fault)
     {
       last_fault = g_drv_fault_count;
-      printf("DRV8323 FAULT: nFAULT low, all PWM disabled (cnt=%d)\r\n", last_fault);
+      printf("DRV8353 FAULT: nFAULT low, all PWM disabled (cnt=%lu)\r\n",
+             (unsigned long)last_fault);
     }
 
     LL_GPIO_TogglePin(LED_CTRL_GPIO_Port, LED_CTRL_Pin);
     osDelay(500);
+  }
+}
+
+/*==========================================================================
+ * MotorTask：FOC 初始化 + 1kHz 速度环 + 遥测打印
+ * 上电只做初始化和校准，不自动转动（mode 保持 IDLE）。
+ *==========================================================================*/
+void StartMotorTask(void *argument)
+{
+  uint32_t print_div = 0;
+
+  printf("MotorTask started\r\n");
+
+  /* 1. ADC1 校准 + DMA + TIM1 触发链启动 */
+  FOC_Init();
+
+  /* 2. DRV8353 电流失调校准（MOE=0，功率级无输出；要求电机零电流） */
+  MC_CalibrateOffsets();
+
+  for(;;)
+  {
+    /* 3. 速度环（IDLE / OPENLOOP 模式下内部直接返回） */
+    FOC_SpeedLoop();
+
+    /* 4. 每 500ms 打印一帧遥测，用来确认采样链路和角度收敛情况 */
+    if (++print_div >= 500)
+    {
+      print_div = 0;
+      printf("raw=%u,%u,%u,%u I=%.2f,%.2f,%.2f Vbus=%.1f id=%.2f iq=%.2f spd=%.0frpm\r\n",
+             g_adc_raw[0], g_adc_raw[1], g_adc_raw[2], g_adc_raw[3],
+             g_mc_state.iu, g_mc_state.iv, g_mc_state.iw,
+             g_mc_state.vbus,
+             g_mc_state.id, g_mc_state.iq,
+             g_mc_state.pll_speed * 60.0f / 6.2831853f / (float)g_mc_cfg.pole_pairs);
+    }
+
+    osDelay(1);
   }
 }
 /* USER CODE END Application */

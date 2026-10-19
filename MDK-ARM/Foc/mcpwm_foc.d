@@ -40,7 +40,8 @@ foc/mcpwm_foc.o: ..\motor\mcpwm_foc.c ..\motor\mcpwm_foc.h \
   ..\Drivers\STM32G4xx_HAL_Driver\Inc\stm32g4xx_ll_gpio.h \
   ..\Core\Inc\app_adc.h ..\Core\Inc\adc.h \
   ..\Middlewares\Third_Party\FreeRTOS\Source\CMSIS_RTOS_V2\cmsis_os2.h \
-  ..\Core\Inc\datetypes.h ..\Core\Inc\tim.h ..\motor\foc_math.h \
+  ..\Core\Inc\datetypes.h ..\Core\Inc\tim.h ..\motor\mc_config.h \
+  ..\motor\foc_math.h \
   ..\Middlewares\Third_Party\FreeRTOS\Source\CMSIS_RTOS_V2\cmsis_os.h \
   ..\Middlewares\Third_Party\FreeRTOS\Source\include\FreeRTOS.h \
   ..\Core\Inc\FreeRTOSConfig.h \
